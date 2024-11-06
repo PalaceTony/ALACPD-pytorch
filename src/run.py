@@ -39,7 +39,7 @@ def main(cfg: DictConfig) -> None:
     print(
         "#########################################################################################"
     )
-    cpdnet_init, Data, cpdnet, cpdnet_tensorboard, graph, sess = model(cfg, cfg, data)
+    cpdnet_init, Data, cpdnet, cpdnet_tensorboard = model(cfg, cfg, data)
 
     print(
         "#########################################################################################"
