@@ -1,10 +1,8 @@
-import os
-import json
-import sys
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import logging
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
@@ -60,12 +58,6 @@ def model(args, params, data):
 
 
 def offline_training(model_name, j, cpdnet_init):
-    print("Python version:", sys.version)
-    print("PyTorch version:", torch.__version__)
-
-    # Dumping configuration
-    cpdnet_init.dump()
-
     # Reading data
     Data = DataUtil(
         cpdnet_init.data,
@@ -77,19 +69,15 @@ def offline_training(model_name, j, cpdnet_init):
     )
 
     if Data.train[0].shape[0] == 0:
-        print("Training samples are low")
+        logging.info("Training samples are low")
         exit(0)
-
-    print(
-        "Training shape: X:", str(Data.train[0].shape), " Y:", str(Data.train[1].shape)
+    logging.info(
+        "Training shape: X: %s Y: %s", Data.train[0].shape, Data.train[1].shape
     )
-    print(
-        "Validation shape: X:",
-        str(Data.valid[0].shape),
-        " Y:",
-        str(Data.valid[1].shape),
+    logging.info(
+        "Validation shape: X: %s Y: %s", Data.valid[0].shape, Data.valid[1].shape
     )
-    print("Testing shape: X:", str(Data.test[0].shape), " Y:", str(Data.test[1].shape))
+    logging.info("Testing shape: X: %s Y: %s", Data.test[0].shape, Data.test[1].shape)
 
     if cpdnet_init.plot and cpdnet_init.autocorrelation is not None:
         AutoCorrelationPlot(Data[j], cpdnet_init)
@@ -97,17 +85,19 @@ def offline_training(model_name, j, cpdnet_init):
     # Model selection and initialization
     if model_name == "AE_skipLSTM_AR":
         cpdnet = AE_SkipLSTM_AR(cpdnet_init, Data.train[0].shape)
-        print(f"Number of parameters: {sum(p.numel() for p in cpdnet.parameters())}")
+        logging.info(
+            f"Number of parameters: {sum(p.numel() for p in cpdnet.parameters())}"
+        )
     elif model_name == "AE_skipLSTM":
         cpdnet = AE_skipLSTM(cpdnet_init, Data.train[0].shape)
     elif model_name == "AR":
         cpdnet = AR(cpdnet_init, Data.train[0].shape)
 
     if cpdnet is None:
-        print("Model could not be loaded or created ... exiting!")
+        logging.info("Model could not be loaded or created ... exiting!")
         exit(1)
 
-    print("Compiling the model")
+    logging.info("Compiling the model")
 
     # Move model to device (CPU or GPU)
     device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
@@ -138,7 +128,7 @@ def offline_training(model_name, j, cpdnet_init):
 
     # Model training
     if cpdnet_init.train:
-        print("Training model on normal data...")
+        logging.info("Training model on normal data...")
         train(cpdnet, train_loader, valid_loader, optimizer, loss_fn, cpdnet_init)
 
     return cpdnet, None, Data
@@ -186,7 +176,7 @@ def train(
 
         # Calculate average loss for this epoch
         avg_train_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch + 1}/{init.epochs}], Loss: {avg_train_loss:.4f}")
+        logging.info(f"Epoch [{epoch + 1}/{init.epochs}], Loss: {avg_train_loss:.4f}")
 
         # Log training loss to TensorBoard if available
         if writer:
@@ -206,15 +196,15 @@ def train(
 
             # Calculate average validation loss for this epoch
             avg_valid_loss = valid_loss / len(valid_loader)
-            print(f"Validation Loss: {avg_valid_loss:.4f}")
+            logging.info(f"Validation Loss: {avg_valid_loss:.4f}")
 
             # Log validation loss to TensorBoard if available
             if writer:
                 writer.add_scalar("Validation Loss", avg_valid_loss, epoch)
 
-    # Calculate and print total training time
+    # Calculate and logging.info total training time
     end_time = datetime.now()
-    print("Total training time: ", str(end_time - start_time))
+    logging.info("Total training time: %s", end_time - start_time)
 
     # Close the TensorBoard writer
     if writer:

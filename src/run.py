@@ -5,6 +5,8 @@ import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from sklearn import preprocessing
+import logging
+
 
 # Your custom imports
 # from plt_utils import plot_results
@@ -15,7 +17,7 @@ from sklearn import preprocessing
 # from metrics import f_measure, covering
 # from cpdnet_datautil import DataUtil
 
-from lib.utils import set_random_seed
+from lib.utils import set_random_seed, setup_logging
 from lib.dataloader import load_data
 from lib.model_utils import model, eval_data, train2
 
@@ -30,24 +32,24 @@ def main(cfg: DictConfig) -> None:
     data, annotations, time = load_data(cfg)
 
     # Initialize model and training settings
-    print(
+    logging.info(
         "#########################################################################################"
     )
-    print(
+    logging.info(
         "#########                   Generate Models and Offline Training                 ########"
     )
-    print(
+    logging.info(
         "#########################################################################################"
     )
     cpdnet_init, Data, cpdnet, cpdnet_tensorboard = model(cfg, cfg, data)
 
-    print(
+    logging.info(
         "#########################################################################################"
     )
-    print(
+    logging.info(
         "#########                   Calculate Mean Loss on Normal Data                  ########"
     )
-    print(
+    logging.info(
         "#########################################################################################"
     )
 
@@ -59,16 +61,16 @@ def main(cfg: DictConfig) -> None:
         device="cuda:7",
     )
 
-    print("Loss Normal Data = ", loss_normal)
+    logging.info("Loss Normal Data = %s", loss_normal)
 
     # Online training loop
-    print(
+    logging.info(
         "#########################################################################################"
     )
-    print(
+    logging.info(
         "#########                             Online Training                            ########"
     )
-    print(
+    logging.info(
         "#########################################################################################"
     )
 
@@ -109,7 +111,9 @@ def main(cfg: DictConfig) -> None:
         )
         data_loss[idx, :] = l_test_i
 
-        print(f"X_test {idx} --> mean loss= {np.mean(l_test_i)} loss: {l_test_i}")
+        logging.info(
+            f"X_test {idx} --> mean loss= {np.mean(l_test_i)} loss: {l_test_i}"
+        )
 
         # Check for anomaly
         if m_normal > cfg.num_change_threshold:
@@ -126,29 +130,28 @@ def main(cfg: DictConfig) -> None:
             and i > 8
             and m_normal > 4
         ):
-            print("#### Anomaly Detected ####", flush=True)
+            logging.info("#### Anomaly Detected ####")
             y_ano[m_train + i] = 1
             counter_ano += 1
             ano_indices_train.append(i)
             ano_indices_plot.append(idx)
 
             if counter_ano > num_ano_cpd:
-                print(
+                logging.info(
                     "#########################################################################################"
                 )
-                print("######### Change-point Detected ########")
-                print(
-                    "#########################################################################################",
-                    flush=True,
+                logging.info("######### Change-point Detected ########")
+                logging.info(
+                    "#########################################################################################"
                 )
 
                 # Insert change-point index and retrain model
                 cpd_indices.append(idx - num_ano_cpd + int(cpdnet_init[0].window / 2))
-                print(
+                logging.info(
                     f"cpd point: {idx - num_ano_cpd + int(cpdnet_init[0].window / 2)}"
                 )
-                print(f"Train on: {ano_indices_train}")
-                print(f"Train on (plot): {ano_indices_plot}")
+                logging.info(f"Train on: {ano_indices_train}")
+                logging.info(f"Train on (plot): {ano_indices_plot}")
 
                 for i in range(num_ano_cpd + 1):
                     del ano_indices_plot[-(num_ano_cpd - i)]
@@ -177,11 +180,11 @@ def main(cfg: DictConfig) -> None:
                 )
 
                 loss_normal = eval_data(cfg["ensemble_space"], cpdnet, x, y)
-                print(f"New loss = {loss_normal}", flush=True)
+                logging.info(f"New loss = {loss_normal}")
 
                 ano_indices_train = []
 
-                print("Model Adapted to new data.")
+                logging.info("Model Adapted to new data.")
             data_mean_loss[idx, :] = loss_normal
 
         else:
@@ -210,7 +213,8 @@ def main(cfg: DictConfig) -> None:
 
                 # Update mean loss for normal data
                 loss_normal = (loss_normal * (m_normal - 1) + l_test_i_n) / m_normal
-                print("new average loss of normal data =", loss_normal, flush=True)
+                logging.info("New average loss of normal data = %s", loss_normal)
+
             else:
                 # Train without updating loss in this branch
                 cpdnet = train2(
@@ -231,7 +235,7 @@ def main(cfg: DictConfig) -> None:
 
                 # Update mean loss for normal data
                 loss_normal = (loss_normal * (m_normal - 1) + l_test_i_n) / m_normal
-                print("new average loss of normal data =", loss_normal, flush=True)
+                logging.info("new average loss of normal data = %s", loss_normal)
 
             # Store the updated loss in `data_mean_loss`
             data_mean_loss[idx, :] = loss_normal
@@ -240,4 +244,6 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    setup_logging()
+    logger = logging.getLogger("ALACPD")
     main()

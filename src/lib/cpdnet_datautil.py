@@ -23,9 +23,9 @@ class DataUtil(object):
         try:
             fin = open(filename)
 
-            print("Start reading data")
+            logging.info("Start reading data")
             self.rawdata = np.loadtxt(fin, delimiter=",")
-            print("End reading data")
+            logging.info("End reading data")
 
             self.w = window
             self.h = horizon
@@ -40,10 +40,10 @@ class DataUtil(object):
             # In case file is not found, all of the above attributes will not have been created
             # Hence, in order to check if this call was successful, you can call hasattr on this object
             # to check if it has attribute 'data' for example
-            print("Error opening data file ... %s", err)
+            logging.info("Error opening data file ... %s", err)
 
     def normalise_data(self, normalise):
-        print("Normalise: %d", normalise)
+        logging.info("Normalise: %d", normalise)
 
         if normalise == 0:  # do not normalise
             self.data = self.rawdata
@@ -57,7 +57,7 @@ class DataUtil(object):
                 self.data[:, i] = self.rawdata[:, i] / self.scale[i]
 
     def split_data(self, train, valid):
-        print(
+        logging.info(
             "Splitting data into training set (%.2f), validation set (%.2f) and testing set (%.2f)",
             train,
             valid,

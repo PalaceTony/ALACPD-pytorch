@@ -26,8 +26,6 @@ def set_random_seed(seed: int):
         False  # Disables the auto-tuner for performance tuning
     )
 
-    print(f"Random seed {seed} set for reproducibility.")
-
 
 def load_empty_model_assests(ensemble_space):
     cpdnet_init = [None] * ensemble_space
@@ -44,3 +42,23 @@ def check_path(filename):
         except OSError as exc:
             if exc.errno != errno.EEXIST:
                 raise
+
+
+import logging
+import sys
+
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    )
+
+    logger = logging.getLogger("ALACPD")
+
+    # Define a function to log uncaught exceptions
+    def log_uncaught_exceptions(exctype, value, traceback):
+        logger.error("Uncaught exception", exc_info=(exctype, value, traceback))
+
+    # Assign the function to sys.excepthook
+    sys.excepthook = log_uncaught_exceptions
