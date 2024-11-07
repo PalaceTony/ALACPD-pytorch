@@ -16,38 +16,12 @@ from lib.lstmae_ensemble import AE_SkipLSTM_AR, AE_skipLSTM, AR
 
 def model(args):
 
-    # Initialize configurations for PyTorch
     cpdnet_init, Data, cpdnet, cpdnet_tensorboard = load_empty_model_assests(
         args["ensemble_space"]
     )
-
     skip_sizes = args["skip_sizes"]
     for j in range(args["ensemble_space"]):
         skip = skip_sizes[j]
-        # args2 = SetArguments(
-        #     data="data/" + args.dataset_name + ".txt",
-        #     filename=f"./results_{[args.model_name , args.model_name , args.model_name][0]}/{args.dataset_name}/seed={args.seed}/",
-        #     save="model",
-        #     epochs=args.epochs,
-        #     skip=skip,
-        #     window=args.windows,
-        #     batchsize=1,
-        #     horizon=args["horizon"],
-        #     highway=args["highway"],
-        #     lr=args["lr"],
-        #     GRUUnits=args["GRUUnits"],
-        #     SkipGRUUnits=args["SkipGRUUnits"],
-        #     debuglevel=50,
-        #     optimizer="SGD",
-        #     normalize=0,
-        #     trainpercent=args["train_percent"],
-        #     validpercent=0,
-        #     no_validation=False,
-        #     tensorboard="",
-        #     predict="all",
-        #     plot=True,
-        # )
-
         cpdnet_init[j] = CPDNetInit(args, skip)
         cpdnet[j], cpdnet_tensorboard[j], Data[j] = offline_training(
             [args.model_name, args.model_name, args.model_name][j], j, cpdnet_init[j]
