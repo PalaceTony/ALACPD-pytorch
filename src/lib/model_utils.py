@@ -8,6 +8,7 @@ import torch.optim as optim
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
+from torch.optim import Adam
 
 
 from lib.utils import load_empty_model_assests
@@ -220,3 +221,102 @@ def train(
         writer.close()
 
     return model
+
+
+def eval_data(ensemble_space, cpdnet, x, y, device="cuda:7"):
+    # Convert `x` and `y` to PyTorch tensors if they are numpy arrays
+    if isinstance(x, np.ndarray):
+        x = torch.tensor(x, dtype=torch.float32)
+    if isinstance(y, np.ndarray):
+        y = torch.tensor(y, dtype=torch.float32)
+
+    # Move the tensors to the specified device
+    x_device = x.to(device)
+    y_device = y.to(device)
+
+    # Initialize an empty list for losses
+    loss = [None] * ensemble_space
+
+    # Loop through each ensemble model
+    for j in range(ensemble_space):
+        model = cpdnet[j].to(device)  # Move model to the specified device
+
+        # Set the model to evaluation mode
+        model.eval()
+
+        # Disable gradient computation for evaluation
+        with torch.no_grad():
+            predictions = model(x_device)  # Forward pass
+            criterion = (
+                torch.nn.MSELoss()
+            )  # Use Mean Squared Error loss, modify if necessary
+            loss[j] = criterion(predictions, y_device).item()  # Compute and store loss
+
+    return np.asarray(loss)
+
+
+def train2(
+    x,
+    y,
+    ensemble_space,
+    cpdnet,
+    cpdnet_init,
+    tensorboard=None,
+    epochs=50,
+    device="cuda:7",
+):
+    # Convert x and y to PyTorch tensors if they are numpy arrays
+    if isinstance(x, np.ndarray):
+        x = torch.tensor(x, dtype=torch.float32)
+    if isinstance(y, np.ndarray):
+        y = torch.tensor(y, dtype=torch.float32)
+
+    # Move data to the specified device
+    x_device = x.to(device)
+    y_device = y.to(device)
+
+    # Initialize tensorboard writers if specified
+    writers = (
+        [SummaryWriter() for _ in range(ensemble_space)]
+        if tensorboard
+        else [None] * ensemble_space
+    )
+
+    # Create dataset and dataloader for batching
+    dataset = TensorDataset(x_device, y_device)
+
+    for j in range(ensemble_space):
+        model = cpdnet[j].to(device)  # Move the model to the specified device
+        model.train()  # Set the model to training mode
+        optimizer = Adam(
+            model.parameters(), lr=cpdnet_init[j].lr
+        )  # Initialize optimizer for each model
+
+        # Create a DataLoader with the model's batch size
+        dataloader = DataLoader(
+            dataset, batch_size=cpdnet_init[j].batchsize, shuffle=True
+        )
+
+        for epoch in range(epochs):
+            total_loss = 0
+            for batch_x, batch_y in dataloader:
+                optimizer.zero_grad()  # Zero the gradients
+                predictions = model(batch_x)  # Forward pass
+                criterion = (
+                    torch.nn.MSELoss()
+                )  # Mean Squared Error loss, or change as needed
+                loss = criterion(predictions, batch_y)  # Compute loss
+                loss.backward()  # Backpropagation
+                optimizer.step()  # Update weights
+
+                total_loss += loss.item()
+
+            # TensorBoard logging (if applicable)
+            if writers[j]:
+                writers[j].add_scalar("Loss/Train", total_loss / len(dataloader), epoch)
+
+        # Close the writer after training
+        if writers[j]:
+            writers[j].close()
+
+    return cpdnet  # Return updated models

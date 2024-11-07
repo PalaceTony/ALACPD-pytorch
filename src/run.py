@@ -17,7 +17,7 @@ from sklearn import preprocessing
 
 from lib.utils import set_random_seed
 from lib.dataloader import load_data
-from lib.model_utils import model
+from lib.model_utils import model, eval_data, train2
 
 
 @hydra.main(version_base=None, config_path="config", config_name="ALACPD")
@@ -50,14 +50,15 @@ def main(cfg: DictConfig) -> None:
     print(
         "#########################################################################################"
     )
+
     loss_normal = eval_data(
-        params["ensemble_space"],
+        cfg["ensemble_space"],
         cpdnet,
-        graph,
-        sess,
         Data[0].train[0],
         Data[0].train[1],
+        device="cuda:7",
     )
+
     print("Loss Normal Data = ", loss_normal)
 
     # Online training loop
@@ -80,8 +81,8 @@ def main(cfg: DictConfig) -> None:
     ano_indices_plot = []
     cpd_indices = []
     y_ano = (m_train + m_test) * [0]
-    data_loss = np.zeros((data.shape[0], params["ensemble_space"]))
-    data_mean_loss = np.zeros((data.shape[0], params["ensemble_space"]))
+    data_loss = np.zeros((data.shape[0], cfg["ensemble_space"]))
+    data_mean_loss = np.zeros((data.shape[0], cfg["ensemble_space"]))
 
     for i in range(cpdnet_init[0].window * 2 + (m_normal - 1)):
         data_loss[i, :] = loss_normal
@@ -99,7 +100,13 @@ def main(cfg: DictConfig) -> None:
         y_in = np.expand_dims(Data[0].test[1][i], axis=0)
 
         # Evaluate loss
-        l_test_i = eval_data(params["ensemble_space"], cpdnet, graph, sess, x_in, y_in)
+        l_test_i = eval_data(
+            cfg["ensemble_space"],
+            cpdnet,
+            x_in,
+            y_in,
+            device="cuda:7",
+        )
         data_loss[idx, :] = l_test_i
 
         print(f"X_test {idx} --> mean loss= {np.mean(l_test_i)} loss: {l_test_i}")
@@ -158,56 +165,78 @@ def main(cfg: DictConfig) -> None:
                     + cfg.extra_samples_after_cpd
                 ]
                 m_normal = 0
-                cpdnet, graph, sess = train2(
+                cpdnet = train2(
                     x,
                     y,
-                    params["ensemble_space"],
+                    cfg["ensemble_space"],
                     cpdnet,
-                    graph,
-                    sess,
                     cpdnet_init,
-                    cpdnet_tensorboard,
-                    epochs=cfg.epochs_to_train_after_cpd,
+                    tensorboard=cpdnet_tensorboard,
+                    epochs=cfg["epochs_to_train_after_cpd"],
+                    device="cuda:7",
                 )
-                loss_normal = eval_data(
-                    params["ensemble_space"], cpdnet, graph, sess, x, y
-                )
+
+                loss_normal = eval_data(cfg["ensemble_space"], cpdnet, x, y)
                 print(f"New loss = {loss_normal}", flush=True)
 
                 ano_indices_train = []
-                plot_results(
-                    data,
-                    time,
-                    data_loss,
-                    data_mean_loss,
-                    ano_indices_plot,
-                    cpd_indices,
-                    save_dir=cpdnet_init[0].logfilename,
-                    name=cfg.dataset_name,
-                    current_idx=idx,
-                )
+
                 print("Model Adapted to new data.")
-        data_mean_loss[idx, :] = loss_normal
+            data_mean_loss[idx, :] = loss_normal
 
-    # Save results and analysis
-    np.savetxt(
-        cfg.file_name + "cpd_indices.out", np.asarray(cpd_indices), delimiter=","
-    )
-    print("Final predicted change-points:", cpd_indices)
+        else:
+            counter_ano = 0
+            ano_indices_train = []
+            m_normal += 1
 
-    if cfg.dataset_name in ["occupancy", "apple", "bee_waggle_6", "run_log"]:
-        with open(os.path.join(cfg.file_name, "results.txt"), "w") as file1:
-            print("\nReal:", annotations)
-            file1.write("\nPredicted: " + str(cpd_indices))
-            file1.write("\nReal: " + str(annotations))
-            print("\nCovering: ", covering(annotations, cpd_indices, data.shape[0]))
-            print("\nF-Measure: ", f_measure(annotations, cpd_indices))
-            file1.write(
-                "\nCovering: " + str(covering(annotations, cpd_indices, data.shape[0]))
-            )
-            file1.write("\nF-Measure: " + str(f_measure(annotations, cpd_indices)))
+            # Determine if extra samples have been reached
+            if m_normal > cfg["extra_samples_after_cpd"]:
+                # Train with PyTorch `train2` function
+                cpdnet = train2(
+                    x_in,
+                    y_in,
+                    cfg["ensemble_space"],
+                    cpdnet,
+                    cpdnet_init,
+                    tensorboard=cpdnet_tensorboard,
+                    epochs=cfg["epochs_to_train_single_sample"],
+                    device="cuda:7",
+                )
 
-    print("Algorithm Finished")
+                # Evaluate the ensemble using the `eval_data` function (modified for PyTorch)
+                l_test_i_n = eval_data(
+                    cfg["ensemble_space"], cpdnet, x_in, y_in, device="cuda:7"
+                )
+
+                # Update mean loss for normal data
+                loss_normal = (loss_normal * (m_normal - 1) + l_test_i_n) / m_normal
+                print("new average loss of normal data =", loss_normal, flush=True)
+            else:
+                # Train without updating loss in this branch
+                cpdnet = train2(
+                    x_in,
+                    y_in,
+                    cfg["ensemble_space"],
+                    cpdnet,
+                    cpdnet_init,
+                    tensorboard=cpdnet_tensorboard,
+                    epochs=cfg["epochs_to_train_single_sample"],
+                    device="cuda:7",
+                )
+
+                # Evaluate the ensemble
+                l_test_i_n = eval_data(
+                    cfg["ensemble_space"], cpdnet, x_in, y_in, device="cuda:7"
+                )
+
+                # Update mean loss for normal data
+                loss_normal = (loss_normal * (m_normal - 1) + l_test_i_n) / m_normal
+                print("new average loss of normal data =", loss_normal, flush=True)
+
+            # Store the updated loss in `data_mean_loss`
+            data_mean_loss[idx, :] = loss_normal
+
+            # Save results and analysis
 
 
 if __name__ == "__main__":
