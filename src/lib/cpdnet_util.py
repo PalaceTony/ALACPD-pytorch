@@ -1,41 +1,28 @@
 class CPDNetInit(object):
-    def __init__(self, args, args_is_dictionary=False):
-        self.data = args["data"]
-        self.window = args["window"]
+    def __init__(
+        self,
+        args,
+        skip,
+    ):
+        self.data = "data/" + args.dataset_name + ".txt"
+        self.window = args["windows"]
         self.horizon = args["horizon"]
         self.CNNFilters = args["CNNFilters"]
         self.CNNKernel = args["CNNKernel"]
         self.GRUUnits = args["GRUUnits"]
         self.SkipGRUUnits = args["SkipGRUUnits"]
-        self.skip = args["skip"]
+        self.skip = skip
         self.dropout = args["dropout"]
         self.normalise = args["normalize"]
         self.highway = args["highway"]
         self.batchsize = args["batchsize"]
         self.epochs = args["epochs"]
         self.initialiser = args["initializer"]
-        self.trainpercent = args["trainpercent"]
-        self.validpercent = args["validpercent"]
-        self.highway = args["highway"]
-        self.train = not args["no_train"]
-        self.validate = not args["no_validation"]
-        self.save = args["save"]
-        self.saveresults = not args["no_saveresults"]
-        self.savehistory = args["savehistory"]
-        self.load = args["load"]
-        self.loss = args["loss"]
+        self.trainpercent = args["train_percent"]
+        self.validpercent = args["valid_percent"]
+        self.train = True
         self.lr = args["lr"]
-        self.optimiser = args["optimizer"]
-        self.evaltest = args["test"]
-        self.tensorboard = args["tensorboard"]
-        self.plot = args["plot"]
-        self.predict = args["predict"]
-        self.series_to_plot = args["series_to_plot"]
-        self.autocorrelation = args["autocorrelation"]
-        self.save_plot = args["save_plot"]
-        self.log = not args["no_log"]
-        self.debuglevel = args["debuglevel"]
-        self.logfilename = args["logfilename"]
+        self.optimiser = "Adam"
 
 
 def SetArguments(

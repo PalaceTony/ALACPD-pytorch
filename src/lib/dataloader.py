@@ -8,7 +8,6 @@ import os
 def load_data(args):
     dataset_name = args.dataset_name
     if dataset_name in ["occupancy", "apple", "bee_waggle_6", "run_log"]:
-        # data = load_data(dataset_name)
         ts = TimeSeries.from_json(
             "datasets/" + dataset_name + "/" + dataset_name + ".json"
         )

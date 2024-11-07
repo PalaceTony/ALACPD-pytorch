@@ -1,12 +1,16 @@
 import numpy as np
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import logging
+from datetime import datetime, timedelta
 
-
-from lib.utils import set_random_seed, setup_logging
+from lib.utils import set_random_seed, setup_logging, adjusted_time
 from lib.dataloader import load_data
 from lib.model_utils import model, eval_data, train2
+
+
+# Plus 13 hrs
+OmegaConf.register_new_resolver("adjusted_time", adjusted_time)
 
 
 @hydra.main(version_base=None, config_path="config", config_name="ALACPD")
@@ -28,7 +32,7 @@ def main(cfg: DictConfig) -> None:
     logging.info(
         "#########################################################################################"
     )
-    cpdnet_init, Data, cpdnet, cpdnet_tensorboard = model(cfg, cfg, data)
+    cpdnet_init, Data, cpdnet, cpdnet_tensorboard = model(cfg)
 
     logging.info(
         "#########################################################################################"
@@ -230,7 +234,11 @@ def main(cfg: DictConfig) -> None:
             # Save results and analysis
 
 
+import os
+
 if __name__ == "__main__":
     setup_logging()
     logger = logging.getLogger("ALACPD")
+    # print current working directory
+    logger.info(f"Current working directory: {os.getcwd()}")
     main()

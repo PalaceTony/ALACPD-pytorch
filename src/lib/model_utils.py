@@ -8,48 +8,47 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import Adam
 
-
 from lib.utils import load_empty_model_assests
 from lib.cpdnet_util import SetArguments, CPDNetInit
 from lib.cpdnet_datautil import DataUtil
 from lib.lstmae_ensemble import AE_SkipLSTM_AR, AE_skipLSTM, AR
 
 
-def model(args, params, data):
+def model(args):
+
     # Initialize configurations for PyTorch
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cpdnet_init, Data, cpdnet, cpdnet_tensorboard = load_empty_model_assests(
-        params["ensemble_space"]
+        args["ensemble_space"]
     )
 
-    skip_sizes = params["skip_sizes"]
-    for j in range(params["ensemble_space"]):
+    skip_sizes = args["skip_sizes"]
+    for j in range(args["ensemble_space"]):
         skip = skip_sizes[j]
-        args2 = SetArguments(
-            data="data/" + args.dataset_name + ".txt",
-            filename=f"./results_{[args.model_name , args.model_name , args.model_name][0]}/{args.dataset_name}/seed={args.seed}/",
-            save="model",
-            epochs=args.epochs,
-            skip=skip,
-            window=args.windows,
-            batchsize=1,
-            horizon=params["horizon"],
-            highway=params["highway"],
-            lr=params["lr"],
-            GRUUnits=params["GRUUnits"],
-            SkipGRUUnits=params["SkipGRUUnits"],
-            debuglevel=50,
-            optimizer="SGD",
-            normalize=0,
-            trainpercent=params["train_percent"],
-            validpercent=0,
-            no_validation=False,
-            tensorboard="",
-            predict="all",
-            plot=True,
-        )
+        # args2 = SetArguments(
+        #     data="data/" + args.dataset_name + ".txt",
+        #     filename=f"./results_{[args.model_name , args.model_name , args.model_name][0]}/{args.dataset_name}/seed={args.seed}/",
+        #     save="model",
+        #     epochs=args.epochs,
+        #     skip=skip,
+        #     window=args.windows,
+        #     batchsize=1,
+        #     horizon=args["horizon"],
+        #     highway=args["highway"],
+        #     lr=args["lr"],
+        #     GRUUnits=args["GRUUnits"],
+        #     SkipGRUUnits=args["SkipGRUUnits"],
+        #     debuglevel=50,
+        #     optimizer="SGD",
+        #     normalize=0,
+        #     trainpercent=args["train_percent"],
+        #     validpercent=0,
+        #     no_validation=False,
+        #     tensorboard="",
+        #     predict="all",
+        #     plot=True,
+        # )
 
-        cpdnet_init[j] = CPDNetInit(args2, args_is_dictionary=True)
+        cpdnet_init[j] = CPDNetInit(args, skip)
         cpdnet[j], cpdnet_tensorboard[j], Data[j] = offline_training(
             [args.model_name, args.model_name, args.model_name][j], j, cpdnet_init[j]
         )
@@ -78,9 +77,6 @@ def offline_training(model_name, j, cpdnet_init):
         "Validation shape: X: %s Y: %s", Data.valid[0].shape, Data.valid[1].shape
     )
     logging.info("Testing shape: X: %s Y: %s", Data.test[0].shape, Data.test[1].shape)
-
-    if cpdnet_init.plot and cpdnet_init.autocorrelation is not None:
-        AutoCorrelationPlot(Data[j], cpdnet_init)
 
     # Model selection and initialization
     if model_name == "AE_skipLSTM_AR":

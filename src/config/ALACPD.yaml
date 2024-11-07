@@ -1,13 +1,13 @@
-# config.yaml
 hydra:
   run:
-    dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ./outputs/${adjusted_time:13,%Y-%m-%d}/${adjusted_time:13,%H-%M-%S}
 
 # Data settings
 dataset_name: "run_log"
 seed: 0
 windows: 6
 train_percent: 0.1
+valid_percent: 0
 
 # Model settings
 model_name: "AE_skipLSTM_AR"
@@ -35,3 +35,11 @@ epochs_to_train_single_sample: 5
 lr: 0.001
 GRUUnits: ${unit}
 SkipGRUUnits: ${unit}
+
+CNNFilters: 100
+CNNKernel: 6
+
+dropout: 0.2
+normalize: 0
+batchsize: 1
+initializer: "glorot_uniform"

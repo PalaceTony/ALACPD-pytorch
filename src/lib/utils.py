@@ -62,3 +62,12 @@ def setup_logging():
 
     # Assign the function to sys.excepthook
     sys.excepthook = log_uncaught_exceptions
+
+
+from datetime import datetime, timedelta
+
+
+# Define the custom resolver function
+def adjusted_time(hours, format_str):
+    adjusted = datetime.now() + timedelta(hours=int(hours))
+    return adjusted.strftime(format_str)
