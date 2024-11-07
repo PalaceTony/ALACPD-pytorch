@@ -234,11 +234,7 @@ def main(cfg: DictConfig) -> None:
             # Save results and analysis
 
 
-import os
-
 if __name__ == "__main__":
     setup_logging()
     logger = logging.getLogger("ALACPD")
-    # print current working directory
-    logger.info(f"Current working directory: {os.getcwd()}")
     main()
