@@ -9,28 +9,30 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import Adam
 
 from lib.utils import load_empty_model_assests
-from lib.cpdnet_util import SetArguments, CPDNetInit
+from lib.cpdnet_util import CPDNetInit
 from lib.cpdnet_datautil import DataUtil
 from lib.lstmae_ensemble import AE_SkipLSTM_AR, AE_skipLSTM, AR
 
 
 def model(args):
 
-    cpdnet_init, Data, cpdnet, cpdnet_tensorboard = load_empty_model_assests(
-        args["ensemble_space"]
-    )
+    cpdnet_init, Data, cpdnet = load_empty_model_assests(args["ensemble_space"])
     skip_sizes = args["skip_sizes"]
     for j in range(args["ensemble_space"]):
         skip = skip_sizes[j]
         cpdnet_init[j] = CPDNetInit(args, skip)
-        cpdnet[j], cpdnet_tensorboard[j], Data[j] = offline_training(
-            [args.model_name, args.model_name, args.model_name][j], j, cpdnet_init[j]
+        cpdnet[j], Data[j] = offline_training(
+            [args.model_name, args.model_name, args.model_name][j], cpdnet_init[j]
         )
 
-    return cpdnet_init, Data, cpdnet, cpdnet_tensorboard
+    return (
+        cpdnet_init,
+        Data,
+        cpdnet,
+    )
 
 
-def offline_training(model_name, j, cpdnet_init):
+def offline_training(model_name, cpdnet_init):
     # Reading data
     Data = DataUtil(
         cpdnet_init.data,
@@ -101,7 +103,7 @@ def offline_training(model_name, j, cpdnet_init):
         logging.info("Training model on normal data...")
         train(cpdnet, train_loader, valid_loader, optimizer, loss_fn, cpdnet_init)
 
-    return cpdnet, None, Data
+    return cpdnet, Data
 
 
 from torch.utils.tensorboard import SummaryWriter

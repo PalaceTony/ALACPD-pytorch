@@ -31,8 +31,7 @@ def load_empty_model_assests(ensemble_space):
     cpdnet_init = [None] * ensemble_space
     Data = [None] * ensemble_space
     cpdnet = [None] * ensemble_space
-    cpdnet_tensorboard = [None] * ensemble_space
-    return cpdnet_init, Data, cpdnet, cpdnet_tensorboard
+    return cpdnet_init, Data, cpdnet
 
 
 def check_path(filename):

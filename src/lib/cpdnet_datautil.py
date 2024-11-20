@@ -73,7 +73,6 @@ class DataUtil(object):
 
     def get_data(self, rng):
         n = len(rng)
-
         X1 = np.zeros((n, 1, self.w, self.m))
         X2 = np.zeros((n, self.w, self.w, self.m))
         Y = np.zeros((n, self.w, self.m))
@@ -87,7 +86,6 @@ class DataUtil(object):
                 start2 = end2 - self.w
                 X2[i, j, :, :] = self.data[start2:end2, :]
             Y[i, :, :] = self.data[start1:end1, :]
-        import numpy
 
-        X = numpy.concatenate((X1, X2), axis=1)
+        X = np.concatenate((X1, X2), axis=1)
         return [X, Y]
